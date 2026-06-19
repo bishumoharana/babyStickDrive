@@ -6,3 +6,1327 @@
   <meta name="theme-color" content="#7dd3fc">
   <meta name="description" content="A single-file offline toddler-friendly car game with keyboard, touch, and gamepad controls.">
   <title>Tiny Car Joy Ride - Single File Offline Toddler Game</title>
+  <style>
+    :root {
+      --panel: rgba(255, 255, 255, 0.86);
+      --panel-strong: rgba(255, 255, 255, 0.96);
+      --ink: #1f2937;
+      --muted: #475569;
+      --accent: #f97316;
+      --accent2: #22c55e;
+      --shadow: 0 18px 45px rgba(31, 41, 55, 0.22);
+      --big: clamp(18px, 3.2vw, 32px);
+      --medium: clamp(15px, 2.2vw, 22px);
+      --small: clamp(12px, 1.7vw, 16px);
+      --control: clamp(58px, 9vw, 100px);
+      --safeTop: env(safe-area-inset-top, 0px);
+      --safeBottom: env(safe-area-inset-bottom, 0px);
+      --safeLeft: env(safe-area-inset-left, 0px);
+      --safeRight: env(safe-area-inset-right, 0px);
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #7dd3fc;
+      color: var(--ink);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      touch-action: none;
+      overscroll-behavior: none;
+    }
+
+    body {
+      position: fixed;
+      inset: 0;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      background: #7dd3fc;
+    }
+
+    button {
+      border: 0;
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+      touch-action: none;
+    }
+
+    .hud {
+      position: absolute;
+      top: calc(10px + var(--safeTop));
+      left: calc(10px + var(--safeLeft));
+      right: calc(10px + var(--safeRight));
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 5;
+      gap: 10px;
+    }
+
+    .statusRow {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .pill {
+      pointer-events: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border-radius: 999px;
+      background: var(--panel);
+      box-shadow: 0 8px 22px rgba(31, 41, 55, 0.15);
+      color: var(--ink);
+      font-size: var(--small);
+      font-weight: 800;
+      backdrop-filter: blur(10px);
+      min-height: 42px;
+    }
+
+    .pill .dot {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #ef4444;
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+      flex: 0 0 auto;
+    }
+
+    .pill.on .dot {
+      background: #22c55e;
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+    }
+
+    .topActions {
+      pointer-events: auto;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .miniBtn {
+      min-width: 44px;
+      min-height: 42px;
+      padding: 9px 12px;
+      border-radius: 999px;
+      background: var(--panel);
+      box-shadow: 0 8px 22px rgba(31, 41, 55, 0.15);
+      font-size: var(--small);
+      font-weight: 900;
+      color: var(--ink);
+    }
+
+    .miniBtn:active, .miniBtn.active { transform: translateY(2px) scale(0.98); background: #fff7ed; }
+
+    .progressWrap {
+      pointer-events: none;
+      position: absolute;
+      top: calc(64px + var(--safeTop));
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(560px, calc(100vw - 28px));
+      z-index: 5;
+      background: rgba(255,255,255,0.76);
+      border-radius: 999px;
+      padding: 8px 10px;
+      box-shadow: 0 8px 22px rgba(31, 41, 55, 0.12);
+      backdrop-filter: blur(8px);
+    }
+
+    .progressText {
+      display: flex;
+      justify-content: space-between;
+      font-size: var(--small);
+      font-weight: 900;
+      margin: 0 4px 5px;
+      color: var(--ink);
+    }
+
+    .progressBar {
+      height: 17px;
+      background: rgba(148, 163, 184, 0.35);
+      border-radius: 999px;
+      overflow: hidden;
+      box-shadow: inset 0 2px 5px rgba(15, 23, 42, 0.13);
+    }
+
+    .progressFill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #fde047, #fb923c, #f472b6, #a78bfa);
+      transition: width 250ms ease;
+    }
+
+    .messageBubble {
+      pointer-events: none;
+      position: absolute;
+      left: 50%;
+      top: 18vh;
+      transform: translateX(-50%) scale(0.98);
+      z-index: 7;
+      padding: 18px 24px;
+      border-radius: 30px;
+      background: var(--panel-strong);
+      box-shadow: var(--shadow);
+      color: var(--ink);
+      font-size: clamp(25px, 5vw, 55px);
+      font-weight: 1000;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 170ms ease, transform 170ms ease;
+      min-width: min(430px, 80vw);
+    }
+
+    .messageBubble.show {
+      opacity: 1;
+      transform: translateX(-50%) scale(1);
+    }
+
+    .controls {
+      position: absolute;
+      left: calc(12px + var(--safeLeft));
+      right: calc(12px + var(--safeRight));
+      bottom: calc(12px + var(--safeBottom));
+      z-index: 6;
+      pointer-events: none;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: end;
+      gap: 12px;
+    }
+
+    .dpad {
+      pointer-events: auto;
+      position: relative;
+      width: calc(var(--control) * 2.55);
+      height: calc(var(--control) * 2.55);
+      justify-self: start;
+      border-radius: 35%;
+      background: rgba(255,255,255,0.22);
+      box-shadow: inset 0 0 0 3px rgba(255,255,255,0.22), 0 16px 35px rgba(31,41,55,0.16);
+      backdrop-filter: blur(7px);
+    }
+
+    .padBtn, .faceBtn, .bumperBtn {
+      position: absolute;
+      min-width: var(--control);
+      min-height: var(--control);
+      border-radius: 28px;
+      background: rgba(255,255,255,0.88);
+      box-shadow: 0 11px 23px rgba(31,41,55,0.22), inset 0 -5px 0 rgba(15,23,42,0.08);
+      font-size: clamp(23px, 4vw, 42px);
+      font-weight: 1000;
+      color: #111827;
+      display: grid;
+      place-items: center;
+      transition: transform 70ms ease, filter 70ms ease, background 70ms ease;
+    }
+
+    .padBtn:active, .padBtn.held, .faceBtn:active, .faceBtn.held, .bumperBtn:active, .bumperBtn.held {
+      transform: translateY(5px) scale(0.96);
+      filter: brightness(1.04) saturate(1.12);
+      background: #fff7ed;
+      box-shadow: 0 5px 12px rgba(31,41,55,0.2), inset 0 -2px 0 rgba(15,23,42,0.08);
+    }
+
+    .padBtn small, .faceBtn small {
+      display: block;
+      font-size: clamp(9px, 1.4vw, 13px);
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      color: #475569;
+      line-height: 1;
+    }
+
+    .padUp { left: 50%; top: 2%; transform: translateX(-50%); }
+    .padDown { left: 50%; bottom: 2%; transform: translateX(-50%); }
+    .padLeft { left: 2%; top: 50%; transform: translateY(-50%); }
+    .padRight { right: 2%; top: 50%; transform: translateY(-50%); }
+    .padCenter {
+      pointer-events: none;
+      position: absolute;
+      left: 50%; top: 50%;
+      width: calc(var(--control) * 0.9);
+      height: calc(var(--control) * 0.9);
+      transform: translate(-50%, -50%);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.50);
+      display: grid;
+      place-items: center;
+      font-size: clamp(17px, 2.7vw, 28px);
+      font-weight: 1000;
+      color: #334155;
+      box-shadow: inset 0 4px 10px rgba(31,41,55,0.12);
+    }
+
+    .faceCluster {
+      pointer-events: auto;
+      position: relative;
+      width: calc(var(--control) * 3.05);
+      height: calc(var(--control) * 2.7);
+      justify-self: end;
+      border-radius: 34%;
+      background: rgba(255,255,255,0.22);
+      box-shadow: inset 0 0 0 3px rgba(255,255,255,0.22), 0 16px 35px rgba(31,41,55,0.16);
+      backdrop-filter: blur(7px);
+    }
+
+    .faceA { right: 3%; bottom: 6%; background: #bbf7d0; }
+    .faceB { right: 37%; bottom: 3%; background: #fed7aa; }
+    .faceX { right: 37%; top: 3%; background: #bfdbfe; }
+    .faceY { right: 3%; top: 6%; background: #fbcfe8; }
+    .faceText { display: grid; place-items: center; gap: 2px; line-height: 0.95; }
+
+    .bumpers {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      align-self: start;
+      padding-top: 2px;
+      min-width: min(260px, 30vw);
+    }
+
+    .bumperBtn {
+      position: static;
+      min-width: clamp(70px, 9vw, 112px);
+      min-height: clamp(46px, 6vw, 72px);
+      border-radius: 999px;
+      font-size: clamp(14px, 2.1vw, 22px);
+      background: rgba(255,255,255,0.88);
+      padding: 0 12px;
+    }
+
+    .infoPanel {
+      position: absolute;
+      right: calc(12px + var(--safeRight));
+      top: calc(66px + var(--safeTop));
+      z-index: 8;
+      display: none;
+      width: min(390px, calc(100vw - 28px - var(--safeLeft) - var(--safeRight)));
+      padding: 12px;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.9);
+      box-shadow: 0 14px 34px rgba(31,41,55,0.16);
+      backdrop-filter: blur(8px);
+    }
+
+    .infoPanel.show {
+      display: grid;
+      gap: 8px;
+    }
+
+    .tinyTip {
+      font-size: var(--small);
+      font-weight: 900;
+      color: #334155;
+      background: rgba(255,255,255,0.72);
+      border-radius: 999px;
+      padding: 8px 11px;
+      box-shadow: 0 8px 18px rgba(31,41,55,0.11);
+      backdrop-filter: blur(7px);
+    }
+
+    .modal {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      display: grid;
+      place-items: center;
+      padding: calc(14px + var(--safeTop)) calc(14px + var(--safeRight)) calc(14px + var(--safeBottom)) calc(14px + var(--safeLeft));
+      background: radial-gradient(circle at top, rgba(255,255,255,0.52), rgba(125,211,252,0.52) 42%, rgba(186,230,253,0.52));
+      backdrop-filter: blur(8px);
+    }
+
+    .modalCard {
+      width: min(540px, 100%);
+      padding: clamp(22px, 4vw, 48px);
+      border-radius: 36px;
+      background: rgba(255,255,255,0.94);
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 16px;
+      text-align: center;
+    }
+
+    .modalCard h1 {
+      margin: 0;
+      font-size: clamp(32px, 6vw, 64px);
+      font-weight: 1000;
+      line-height: 1.05;
+      color: var(--ink);
+    }
+
+    .modalCard p {
+      margin: 0;
+      font-size: clamp(14px, 2.2vw, 20px);
+      font-weight: 800;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .bigBtn {
+      width: 100%;
+      padding: clamp(14px, 2.5vw, 22px) 20px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #f97316, #fb923c);
+      color: #fff;
+      font-size: clamp(18px, 3vw, 32px);
+      font-weight: 1000;
+      box-shadow: 0 14px 30px rgba(249,115,22,0.40);
+      transition: transform 80ms ease, box-shadow 80ms ease;
+    }
+
+    .bigBtn:active { transform: translateY(4px); box-shadow: 0 6px 14px rgba(249,115,22,0.30); }
+
+    .choiceGrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .choiceBtn {
+      padding: clamp(12px, 2vw, 18px) 10px;
+      border-radius: 20px;
+      background: rgba(241,245,249,0.95);
+      font-size: clamp(20px, 3.5vw, 36px);
+      font-weight: 1000;
+      color: var(--ink);
+      box-shadow: 0 10px 22px rgba(31,41,55,0.12);
+      transition: transform 80ms ease;
+      display: grid;
+      place-items: center;
+      gap: 4px;
+    }
+
+    .choiceBtn small {
+      display: block;
+      font-size: clamp(10px, 1.5vw, 14px);
+      font-weight: 900;
+      color: var(--muted);
+    }
+
+    .choiceBtn:active { transform: scale(0.96); }
+    .choiceBtn.chosen { background: #fef9c3; box-shadow: 0 0 0 3px #fde047, 0 10px 22px rgba(31,41,55,0.12); }
+
+    .sectionLabel {
+      font-size: clamp(11px, 1.6vw, 15px);
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+      text-align: left;
+    }
+
+    #confetti-canvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 20;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="confetti-canvas"></canvas>
+<canvas id="game"></canvas>
+
+<!-- HUD -->
+<div class="hud">
+  <div class="statusRow">
+    <div class="pill" id="gpPill"><span class="dot"></span><span id="gpLabel">No gamepad</span></div>
+    <div class="pill" id="starPill">⭐ <span id="starCount">0</span></div>
+  </div>
+  <div class="topActions">
+    <button class="miniBtn" id="placeBtn" aria-label="Change place">🗺️ Place</button>
+    <button class="miniBtn" id="colorBtn" aria-label="Change car color">🎨 Color</button>
+    <button class="miniBtn" id="helpBtn" aria-label="Help">❓</button>
+    <button class="miniBtn" id="pauseBtn" aria-label="Pause">⏸️</button>
+  </div>
+</div>
+
+<!-- Progress bar -->
+<div class="progressWrap" id="progressWrap">
+  <div class="progressText">
+    <span id="progressLabel">🌟 Journey</span>
+    <span id="progressPct">0%</span>
+  </div>
+  <div class="progressBar"><div class="progressFill" id="progressFill"></div></div>
+</div>
+
+<!-- Message bubble -->
+<div class="messageBubble" id="msgBubble"></div>
+
+<!-- Controls -->
+<div class="controls">
+  <div class="dpad" id="dpad">
+    <button class="padBtn padUp" id="padUp">⬆️<small>fwd</small></button>
+    <button class="padBtn padDown" id="padDown">⬇️<small>rev</small></button>
+    <button class="padBtn padLeft" id="padLeft">⬅️<small>left</small></button>
+    <button class="padBtn padRight" id="padRight">➡️<small>right</small></button>
+    <div class="padCenter">🚗</div>
+  </div>
+
+  <div class="bumpers">
+    <button class="bumperBtn" id="bumpL" aria-label="Beep">📣<br><small>BEEP</small></button>
+    <button class="bumperBtn" id="bumpR" aria-label="Zoom">⚡<br><small>ZOOM</small></button>
+  </div>
+
+  <div class="faceCluster">
+    <button class="faceBtn faceA" id="faceA"><div class="faceText">🎵<small>BEEP</small></div></button>
+    <button class="faceBtn faceB" id="faceB"><div class="faceText">🛑<small>STOP</small></div></button>
+    <button class="faceBtn faceX" id="faceX"><div class="faceText">🌈<small>PAINT</small></div></button>
+    <button class="faceBtn faceY" id="faceY"><div class="faceText">🎉<small>YAY!</small></div></button>
+  </div>
+</div>
+
+<!-- Info panel -->
+<div class="infoPanel" id="infoPanel">
+  <div class="tinyTip">🕹️ D-pad / sticks / arrow keys / WASD = drive</div>
+  <div class="tinyTip">🎮 A = beep · B = stop · X = paint · Y = celebrate</div>
+  <div class="tinyTip">⌨️ Space / H = beep · P = pause · R = restart</div>
+  <div class="tinyTip">🎨 LB = change color · RB = change place</div>
+  <div class="tinyTip">⚡ RT = zoom · 🐢 LT = slow down</div>
+  <div class="tinyTip">📱 Touch the D-pad and face buttons on screen</div>
+</div>
+
+<!-- Welcome modal -->
+<div class="modal" id="welcomeModal">
+  <div class="modalCard">
+    <h1>🚗 Tiny Car<br>Joy Ride!</h1>
+    <p>Drive your car, collect ⭐ stars,<br>beep 📣, and paint 🌈 rainbows!</p>
+    <div class="sectionLabel">Pick your car color</div>
+    <div class="choiceGrid" id="colorGrid"></div>
+    <div class="sectionLabel">Pick your place</div>
+    <div class="choiceGrid" id="placeGrid"></div>
+    <button class="bigBtn" id="startBtn">🚗 Let's Go!</button>
+  </div>
+</div>
+
+<!-- Pause modal -->
+<div class="modal" id="pauseModal" style="display:none">
+  <div class="modalCard">
+    <h1>⏸️ Paused</h1>
+    <p>Take a little break 🌸</p>
+    <button class="bigBtn" id="resumeBtn">▶️ Keep Driving!</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ─── CONSTANTS ───────────────────────────────────────────────────────────────
+
+const CAR_COLORS = [
+  { label:'Red',    emoji:'🔴', hex:'#ef4444' },
+  { label:'Blue',   emoji:'🔵', hex:'#3b82f6' },
+  { label:'Green',  emoji:'🟢', hex:'#22c55e' },
+  { label:'Yellow', emoji:'🟡', hex:'#eab308' },
+  { label:'Purple', emoji:'🟣', hex:'#a855f7' },
+  { label:'Orange', emoji:'🟠', hex:'#f97316' },
+  { label:'Pink',   emoji:'🩷', hex:'#ec4899' },
+  { label:'White',  emoji:'⚪', hex:'#f1f5f9' },
+];
+
+const PLACES = [
+  { label:'Town',    emoji:'🏘️',  sky:'#7dd3fc', ground:'#86efac', road:'#94a3b8' },
+  { label:'Beach',   emoji:'🏖️',  sky:'#fde68a', ground:'#fcd34d', road:'#fed7aa' },
+  { label:'Forest',  emoji:'🌲',  sky:'#bbf7d0', ground:'#4ade80', road:'#6b7280' },
+  { label:'Space',   emoji:'🌌',  sky:'#1e1b4b', ground:'#312e81', road:'#4338ca' },
+  { label:'Snow',    emoji:'❄️',  sky:'#e0f2fe', ground:'#f0f9ff', road:'#cbd5e1' },
+  { label:'Desert',  emoji:'🏜️',  sky:'#fed7aa', ground:'#fbbf24', road:'#d97706' },
+  { label:'Night',   emoji:'🌃',  sky:'#0f172a', ground:'#1e293b', road:'#334155' },
+  { label:'Rainbow', emoji:'🌈',  sky:'#fdf4ff', ground:'#f5d0fe', road:'#e879f9' },
+];
+
+const MESSAGES = {
+  star:    ['⭐ Star!','✨ Yay!','🌟 Shine!','⭐ Got one!','💫 Wow!'],
+  beep:    ['📣 Beep!','🔔 Honk!','📯 Toot!','🎺 Beep beep!'],
+  paint:   ['🌈 Rainbow!','🎨 Pretty!','🖌️ Art!','✨ Colors!'],
+  cele:    ['🎉 Yay!','🥳 Hooray!','🎊 Woohoo!','🌟 Amazing!'],
+  stop:    ['🛑 Stop!','✋ Brake!','⛔ Whoa!'],
+  zoom:    ['⚡ Zoom!','🚀 Fast!','💨 Whoosh!'],
+  slow:    ['🐢 Slow...','🌸 Easy...','🍃 Gentle...'],
+  place:   ['🗺️ New place!','🌍 Explore!','🗺️ Off we go!'],
+};
+
+const pick = arr => arr[Math.random() * arr.length | 0];
+const clamp = (v,lo,hi) => v < lo ? lo : v > hi ? hi : v;
+const lerp = (a,b,t) => a + (b-a)*t;
+const TAU = Math.PI * 2;
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+
+let carColorIdx = 0;
+let placeIdx = 0;
+let running = false;
+let paused = false;
+
+const car = {
+  x: 0, y: 0,
+  vx: 0, vy: 0,
+  angle: 0,
+  speed: 0,
+  targetAngle: 0,
+  boost: 1,
+  slow: 1,
+  trail: [],
+  painting: false,
+  paintColor: '#f472b6',
+  stops: 0,
+};
+
+const input = {
+  up: false, down: false, left: false, right: false,
+  beep: false, stop: false, paint: false, celebrate: false,
+  zoom: false, slowmo: false,
+  gpConnected: false,
+};
+
+let stars = [];
+let rainbows = [];
+let particles = [];
+let floaters = [];
+let confettiPieces = [];
+let starCount = 0;
+let journey = 0;
+const JOURNEY_MAX = 2000;
+let lastTime = 0;
+
+// ─── CANVAS ──────────────────────────────────────────────────────────────────
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const confCanvas = document.getElementById('confetti-canvas');
+const confCtx = confCanvas.getContext('2d');
+
+function resize() {
+  canvas.width = confCanvas.width = window.innerWidth;
+  canvas.height = confCanvas.height = window.innerHeight;
+  if (running) spawnStars();
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ─── AUDIO ───────────────────────────────────────────────────────────────────
+
+let audioCtx = null;
+function getAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playTone(freq, type='sine', dur=0.18, vol=0.22, when=0) {
+  try {
+    const a = getAudio();
+    const t = a.currentTime + when;
+    const osc = a.createOscillator();
+    const gain = a.createGain();
+    osc.connect(gain); gain.connect(a.destination);
+    osc.type = type; osc.frequency.setValueAtTime(freq, t);
+    gain.gain.setValueAtTime(vol, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.start(t); osc.stop(t + dur + 0.01);
+  } catch(e) {}
+}
+
+function beepSound() {
+  playTone(520,'square',0.12,0.18);
+  playTone(780,'square',0.09,0.12,0.1);
+}
+
+function starSound() {
+  [523,659,784,1047].forEach((f,i)=>playTone(f,'sine',0.13,0.15,i*0.06));
+}
+
+function celebrateSound() {
+  [262,330,392,523,659,784].forEach((f,i)=>playTone(f,'triangle',0.18,0.18,i*0.07));
+}
+
+function paintSound() {
+  playTone(330,'sine',0.14,0.14);
+  playTone(440,'sine',0.14,0.12,0.08);
+  playTone(550,'sine',0.14,0.10,0.16);
+}
+
+function stopSound() {
+  playTone(200,'sawtooth',0.18,0.22);
+  playTone(150,'sawtooth',0.18,0.18,0.1);
+}
+
+function zoomSound() {
+  try {
+    const a = getAudio();
+    const t = a.currentTime;
+    const osc = a.createOscillator();
+    const gain = a.createGain();
+    osc.connect(gain); gain.connect(a.destination);
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(180, t);
+    osc.frequency.exponentialRampToValueAtTime(400, t+0.25);
+    gain.gain.setValueAtTime(0.18, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t+0.28);
+    osc.start(t); osc.stop(t+0.3);
+  } catch(e) {}
+}
+
+function placeSound() {
+  [440,550,660].forEach((f,i)=>playTone(f,'sine',0.12,0.14,i*0.07));
+}
+
+// ─── SETUP MODAL ─────────────────────────────────────────────────────────────
+
+const colorGrid = document.getElementById('colorGrid');
+const placeGrid = document.getElementById('placeGrid');
+
+function buildGrid(container, items, getCurrent, setter) {
+  container.innerHTML = '';
+  items.forEach((item, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'choiceBtn' + (i === getCurrent() ? ' chosen' : '');
+    btn.innerHTML = `${item.emoji}<small>${item.label}</small>`;
+    btn.addEventListener('click', () => {
+      setter(i);
+      [...container.children].forEach((b,j) => b.classList.toggle('chosen', j===i));
+    });
+    container.appendChild(btn);
+  });
+}
+
+buildGrid(colorGrid, CAR_COLORS, ()=>carColorIdx, i=>{ carColorIdx=i; });
+buildGrid(placeGrid, PLACES,     ()=>placeIdx,    i=>{ placeIdx=i; });
+
+document.getElementById('startBtn').addEventListener('click', startGame);
+
+// ─── STARS ───────────────────────────────────────────────────────────────────
+
+function spawnStars() {
+  stars = [];
+  const n = Math.max(6, Math.floor(canvas.width * canvas.height / 22000));
+  for (let i = 0; i < n; i++) stars.push(newStar());
+}
+
+function newStar(x, y) {
+  return {
+    x: x ?? Math.random() * canvas.width,
+    y: y ?? Math.random() * canvas.height,
+    r: 14 + Math.random() * 14,
+    pulse: Math.random() * TAU,
+    collected: false,
+  };
+}
+
+// ─── FLOATERS ────────────────────────────────────────────────────────────────
+
+const FLOATER_SETS = [
+  ['🌸','🌼','🌻','🌺'],
+  ['🌴','🌵','🌲','🍀'],
+  ['🏠','🏡','⛪','🏪'],
+  ['🪐','⭐','🌙','☄️'],
+  ['⛄','🏔️','❄️','🌨️'],
+  ['🌵','🏜️','🦂','☀️'],
+  ['🌃','🌉','🌆','🌇'],
+  ['🦋','🌈','🌸','✨'],
+];
+
+function spawnFloaters() {
+  floaters = [];
+  const set = FLOATER_SETS[placeIdx % FLOATER_SETS.length];
+  const n = 8 + (Math.random()*5|0);
+  for (let i = 0; i < n; i++) {
+    floaters.push({
+      emoji: pick(set),
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height * 0.7,
+      size: 24 + Math.random() * 24,
+      phase: Math.random() * TAU,
+      speed: 0.3 + Math.random() * 0.5,
+    });
+  }
+}
+
+// ─── GAME LOOP ────────────────────────────────────────────────────────────────
+
+function startGame() {
+  document.getElementById('welcomeModal').style.display = 'none';
+  running = true;
+  paused = false;
+  car.x = canvas.width / 2;
+  car.y = canvas.height / 2;
+  car.vx = car.vy = car.speed = 0;
+  car.angle = 0;
+  car.trail = [];
+  car.painting = false;
+  car.stops = 0;
+  starCount = 0;
+  journey = 0;
+  particles = [];
+  rainbows = [];
+  confettiPieces = [];
+  document.getElementById('starCount').textContent = '0';
+  updateProgress();
+  spawnStars();
+  spawnFloaters();
+  lastTime = performance.now();
+  requestAnimationFrame(loop);
+}
+
+function loop(ts) {
+  if (!running) return;
+  const dt = clamp((ts - lastTime) / 1000, 0, 0.05);
+  lastTime = ts;
+  if (!paused) {
+    pollGamepad();
+    update(dt);
+  }
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// ─── UPDATE ───────────────────────────────────────────────────────────────────
+
+let prevBeep=false, prevStop=false, prevPaint=false, prevCele=false,
+    prevZoom=false, prevSlow=false, prevLeft=false, prevRight=false;
+let beepCooldown=0, paintCooldown=0, celeCooldown=0;
+let boostActive=false, slowActive=false;
+
+function update(dt) {
+  beepCooldown = Math.max(0, beepCooldown - dt);
+  paintCooldown = Math.max(0, paintCooldown - dt);
+  celeCooldown  = Math.max(0, celeCooldown - dt);
+
+  // Turning
+  if (input.left)  car.angle -= 2.2 * dt * car.slow;
+  if (input.right) car.angle += 2.2 * dt * car.slow;
+
+  // Acceleration
+  const maxSpd = (200 + car.boost * 120) * car.slow;
+  if (input.up)   car.speed = lerp(car.speed, maxSpd, 1 - Math.exp(-5 * dt));
+  else if (input.down) car.speed = lerp(car.speed, -maxSpd * 0.5, 1 - Math.exp(-5 * dt));
+  else            car.speed = lerp(car.speed, 0, 1 - Math.exp(-4 * dt));
+
+  // Move
+  car.vx = Math.cos(car.angle - Math.PI/2) * car.speed;
+  car.vy = Math.sin(car.angle - Math.PI/2) * car.speed;
+  car.x += car.vx * dt;
+  car.y += car.vy * dt;
+
+  // Wrap edges
+  if (car.x < -40) car.x = canvas.width + 40;
+  if (car.x > canvas.width + 40) car.x = -40;
+  if (car.y < -40) car.y = canvas.height + 40;
+  if (car.y > canvas.height + 40) car.y = -40;
+
+  // Trail
+  if (running) {
+    car.trail.push({ x: car.x, y: car.y, color: car.painting ? car.paintColor : null, t: 1 });
+    if (car.trail.length > 180) car.trail.shift();
+  }
+
+  // Journey
+  const moved = Math.hypot(car.vx * dt, car.vy * dt);
+  journey = Math.min(JOURNEY_MAX, journey + moved * 0.12);
+  updateProgress();
+
+  // Boost / slow
+  boostActive = input.zoom;
+  slowActive  = input.slowmo;
+  car.boost = boostActive ? 1.6 : 1;
+  car.slow  = slowActive  ? 0.35 : 1;
+
+  if (boostActive && !prevZoom) { zoomSound(); showMsg(pick(MESSAGES.zoom)); }
+  if (slowActive  && !prevSlow) { showMsg(pick(MESSAGES.slow)); }
+
+  // Stop
+  if (input.stop && !prevStop) {
+    car.speed = 0; car.vx = 0; car.vy = 0;
+    stopSound(); showMsg(pick(MESSAGES.stop));
+    burst(car.x, car.y, '#ef4444', 18);
+  }
+
+  // Beep
+  if (input.beep && !prevBeep && beepCooldown <= 0) {
+    beepSound(); showMsg(pick(MESSAGES.beep));
+    beepCooldown = 0.4;
+    burst(car.x, car.y, CAR_COLORS[carColorIdx].hex, 12);
+  }
+
+  // Paint
+  if (input.paint && !prevPaint && paintCooldown <= 0) {
+    car.painting = !car.painting;
+    car.paintColor = `hsl(${Math.random()*360|0},90%,60%)`;
+    paintSound(); showMsg(pick(MESSAGES.paint));
+    paintCooldown = 0.5;
+    if (car.painting) spawnRainbow();
+  }
+
+  // Celebrate
+  if (input.celebrate && !prevCele && celeCooldown <= 0) {
+    celebrateSound(); showMsg(pick(MESSAGES.cele));
+    celeCooldown = 1.2;
+    launchConfetti();
+    burst(car.x, car.y, '#fde047', 35);
+  }
+
+  // Stars
+  stars.forEach(s => {
+    if (s.collected) return;
+    s.pulse += dt * 2;
+    const d = Math.hypot(car.x - s.x, car.y - s.y);
+    if (d < s.r + 18) {
+      s.collected = true;
+      starCount++;
+      document.getElementById('starCount').textContent = starCount;
+      starSound();
+      showMsg(pick(MESSAGES.star));
+      burst(s.x, s.y, '#fde047', 20);
+      setTimeout(() => {
+        const i = stars.indexOf(s);
+        if (i !== -1) { stars[i] = newStar(); }
+      }, 1800);
+    }
+  });
+
+  // Particles
+  particles.forEach(p => {
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += 220 * dt;
+    p.life -= dt;
+    p.r = Math.max(0, p.r - dt * 8);
+  });
+  particles = particles.filter(p => p.life > 0);
+
+  // Confetti
+  confettiPieces.forEach(c => {
+    c.x += c.vx * dt;
+    c.y += c.vy * dt;
+    c.vy += 160 * dt;
+    c.life -= dt;
+    c.rot += c.spin * dt;
+  });
+  confettiPieces = confettiPieces.filter(c => c.life > 0);
+
+  // Floaters bob
+  floaters.forEach(f => { f.phase += f.speed * dt; });
+
+  prevBeep=input.beep; prevStop=input.stop; prevPaint=input.paint;
+  prevCele=input.celebrate; prevZoom=input.zoom; prevSlow=input.slowmo;
+}
+
+function updateProgress() {
+  const pct = Math.min(100, (journey / JOURNEY_MAX * 100) | 0);
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressLabel').textContent =
+    pct < 30 ? '🚗 Starting out…' :
+    pct < 60 ? '🌟 Halfway there!' :
+    pct < 90 ? '🎉 Almost done!' :
+               '🏆 Champion!';
+}
+
+// ─── PARTICLES ───────────────────────────────────────────────────────────────
+
+function burst(x, y, color, n=14) {
+  for (let i = 0; i < n; i++) {
+    const ang = Math.random() * TAU;
+    const spd = 60 + Math.random() * 180;
+    particles.push({
+      x, y,
+      vx: Math.cos(ang) * spd,
+      vy: Math.sin(ang) * spd - 80,
+      r: 5 + Math.random() * 7,
+      life: 0.5 + Math.random() * 0.5,
+      color,
+    });
+  }
+}
+
+function spawnRainbow() {
+  const colors = ['#f87171','#fb923c','#fbbf24','#4ade80','#60a5fa','#a78bfa','#f472b6'];
+  rainbows.push({ x: car.x, y: car.y, life: 1.2, colors });
+}
+
+function launchConfetti() {
+  const colors = ['#f87171','#fbbf24','#4ade80','#60a5fa','#f472b6','#a78bfa','#fff'];
+  for (let i = 0; i < 90; i++) {
+    confettiPieces.push({
+      x: car.x + (Math.random()-0.5)*60,
+      y: car.y,
+      vx: (Math.random()-0.5)*300,
+      vy: -200 - Math.random()*250,
+      rot: Math.random()*TAU,
+      spin: (Math.random()-0.5)*8,
+      w: 8 + Math.random()*10,
+      h: 5 + Math.random()*7,
+      color: pick(colors),
+      life: 1.5 + Math.random(),
+    });
+  }
+}
+
+// ─── DRAW ─────────────────────────────────────────────────────────────────────
+
+function draw() {
+  const place = PLACES[placeIdx];
+  ctx.fillStyle = place.sky;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  drawFloaters();
+  drawRoad(place);
+  drawTrail();
+  drawRainbows();
+  drawStars();
+  drawParticles();
+  if (running && !paused) drawCar();
+  drawConfetti();
+}
+
+function drawFloaters() {
+  floaters.forEach(f => {
+    ctx.save();
+    ctx.font = `${f.size}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.globalAlpha = 0.55 + 0.1 * Math.sin(f.phase);
+    ctx.fillText(f.emoji, f.x, f.y + 6 * Math.sin(f.phase));
+    ctx.restore();
+  });
+}
+
+function drawRoad(place) {
+  // simple decorative road patches
+  ctx.fillStyle = place.road + '55';
+  const rw = Math.min(canvas.width, canvas.height) * 0.12;
+  ctx.beginPath();
+  ctx.ellipse(canvas.width/2, canvas.height*0.62, canvas.width*0.45, rw, 0, 0, TAU);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(canvas.width/2, canvas.height*0.62, canvas.width*0.28, rw*0.5, 0, 0, TAU);
+  ctx.fillStyle = place.road + '33';
+  ctx.fill();
+}
+
+function drawTrail() {
+  if (car.trail.length < 2) return;
+  for (let i = 1; i < car.trail.length; i++) {
+    const p = car.trail[i-1], q = car.trail[i];
+    if (!q.color) continue;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(q.x, q.y);
+    ctx.strokeStyle = q.color;
+    ctx.lineWidth = 6;
+    ctx.globalAlpha = (i / car.trail.length) * 0.7;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawRainbows() {
+  rainbows = rainbows.filter(r => r.life > 0);
+  rainbows.forEach(r => {
+    r.life -= 0.016;
+    const alpha = clamp(r.life, 0, 1) * 0.45;
+    r.colors.forEach((c, i) => {
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, 24 + i * 14, Math.PI, TAU);
+      ctx.strokeStyle = c;
+      ctx.lineWidth = 10;
+      ctx.globalAlpha = alpha;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    });
+  });
+}
+
+function drawStars() {
+  const now = performance.now() / 1000;
+  stars.forEach(s => {
+    if (s.collected) return;
+    const sc = 0.85 + 0.15 * Math.sin(s.pulse);
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.scale(sc, sc);
+    ctx.font = `${s.r * 2}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⭐', 0, 0);
+    ctx.restore();
+  });
+}
+
+function drawParticles() {
+  particles.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, TAU);
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = clamp(p.life * 2, 0, 1);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+}
+
+function drawCar() {
+  const col = CAR_COLORS[carColorIdx];
+  ctx.save();
+  ctx.translate(car.x, car.y);
+  ctx.rotate(car.angle);
+
+  // Shadow
+  ctx.beginPath();
+  ctx.ellipse(3, 8, 20, 10, 0, 0, TAU);
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fill();
+
+  // Body
+  const bodyGrad = ctx.createLinearGradient(-18,-24,18,24);
+  bodyGrad.addColorStop(0, lighten(col.hex, 0.2));
+  bodyGrad.addColorStop(1, col.hex);
+  ctx.beginPath();
+  ctx.roundRect(-18, -28, 36, 52, 10);
+  ctx.fillStyle = bodyGrad;
+  ctx.fill();
+
+  // Cabin
+  ctx.beginPath();
+  ctx.roundRect(-12, -26, 24, 26, 8);
+  ctx.fillStyle = lighten(col.hex, 0.3);
+  ctx.fill();
+
+  // Windows
+  ctx.beginPath();
+  ctx.roundRect(-9, -23, 18, 18, 5);
+  ctx.fillStyle = 'rgba(186,230,253,0.85)';
+  ctx.fill();
+
+  // Headlights
+  [[-11,18],[11,18]].forEach(([wx,wy]) => {
+    ctx.beginPath();
+    ctx.ellipse(wx, wy, 5, 4, 0, 0, TAU);
+    ctx.fillStyle = '#fde047';
+    ctx.fill();
+  });
+
+  // Wheels
+  [[-18,-16],[-18,10],[18,-16],[18,10]].forEach(([wx,wy]) => {
+    ctx.beginPath();
+    ctx.ellipse(wx, wy, 7, 7, 0, 0, TAU);
+    ctx.fillStyle = '#1f2937';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(wx, wy, 3.5, 3.5, 0, 0, TAU);
+    ctx.fillStyle = '#94a3b8';
+    ctx.fill();
+  });
+
+  ctx.restore();
+}
+
+function lighten(hex, amt) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  const to255 = v => Math.min(255, (v + (255-v)*amt)|0);
+  return `rgb(${to255(r)},${to255(g)},${to255(b)})`;
+}
+
+function drawConfetti() {
+  confCtx.clearRect(0, 0, confCanvas.width, confCanvas.height);
+  confettiPieces.forEach(c => {
+    confCtx.save();
+    confCtx.translate(c.x, c.y);
+    confCtx.rotate(c.rot);
+    confCtx.globalAlpha = clamp(c.life, 0, 1);
+    confCtx.fillStyle = c.color;
+    confCtx.fillRect(-c.w/2, -c.h/2, c.w, c.h);
+    confCtx.restore();
+  });
+}
+
+// ─── MESSAGES ────────────────────────────────────────────────────────────────
+
+let msgTimer = null;
+const msgEl = document.getElementById('msgBubble');
+
+function showMsg(text) {
+  msgEl.textContent = text;
+  msgEl.classList.add('show');
+  clearTimeout(msgTimer);
+  msgTimer = setTimeout(() => msgEl.classList.remove('show'), 1200);
+}
+
+// ─── KEYBOARD ────────────────────────────────────────────────────────────────
+
+const keyMap = {
+  ArrowUp:'up', KeyW:'up', ArrowDown:'down', KeyS:'down',
+  ArrowLeft:'left', KeyA:'left', ArrowRight:'right', KeyD:'right',
+};
+
+document.addEventListener('keydown', e => {
+  if (keyMap[e.code]) { input[keyMap[e.code]] = true; e.preventDefault(); }
+  if (e.code === 'Space' || e.code === 'KeyH') { input.beep = true; e.preventDefault(); }
+  if (e.code === 'KeyX') { input.paint = true; }
+  if (e.code === 'KeyC') { input.celebrate = true; }
+  if (e.code === 'KeyB') { input.stop = true; }
+  if (e.code === 'KeyZ') { input.zoom = true; }
+  if (e.code === 'KeyQ') { input.slowmo = true; }
+  if (e.code === 'KeyP' && running) togglePause();
+  if (e.code === 'KeyR' && running) restartGame();
+});
+
+document.addEventListener('keyup', e => {
+  if (keyMap[e.code]) input[keyMap[e.code]] = false;
+  if (e.code === 'Space' || e.code === 'KeyH') input.beep = false;
+  if (e.code === 'KeyX') input.paint = false;
+  if (e.code === 'KeyC') input.celebrate = false;
+  if (e.code === 'KeyB') input.stop = false;
+  if (e.code === 'KeyZ') input.zoom = false;
+  if (e.code === 'KeyQ') input.slowmo = false;
+});
+
+// ─── GAMEPAD ─────────────────────────────────────────────────────────────────
+
+function pollGamepad() {
+  const gps = navigator.getGamepads ? navigator.getGamepads() : [];
+  let gp = null;
+  for (const g of gps) { if (g && g.connected) { gp = g; break; } }
+  const connected = !!gp;
+  if (connected !== input.gpConnected) {
+    input.gpConnected = connected;
+    const pill = document.getElementById('gpPill');
+    const lbl  = document.getElementById('gpLabel');
+    pill.classList.toggle('on', connected);
+    lbl.textContent = connected ? '🎮 Gamepad on' : 'No gamepad';
+  }
+  if (!gp) return;
+
+  const ax0 = gp.axes[0] ?? 0, ax1 = gp.axes[1] ?? 0;
+  const ax2 = gp.axes[2] ?? 0, ax3 = gp.axes[3] ?? 0;
+  const DEAD = 0.18;
+
+  input.left  = gp.buttons[14]?.pressed || ax0 < -DEAD || ax2 < -DEAD;
+  input.right = gp.buttons[15]?.pressed || ax0 >  DEAD || ax2 >  DEAD;
+  input.up    = gp.buttons[12]?.pressed || ax1 < -DEAD || ax3 < -DEAD;
+  input.down  = gp.buttons[13]?.pressed || ax1 >  DEAD || ax3 >  DEAD;
+
+  input.beep      = gp.buttons[0]?.pressed;  // A
+  input.stop      = gp.buttons[1]?.pressed;  // B
+  input.paint     = gp.buttons[2]?.pressed;  // X
+  input.celebrate = gp.buttons[3]?.pressed;  // Y
+
+  // LB = color change, RB = place change (edge-triggered)
+  if (gp.buttons[4]?.pressed && !prevLB) { cycleColor(); }
+  if (gp.buttons[5]?.pressed && !prevRB) { cyclePlace(); }
+  prevLB = gp.buttons[4]?.pressed;
+  prevRB = gp.buttons[5]?.pressed;
+
+  input.zoom   = (gp.buttons[7]?.value ?? 0) > 0.25;
+  input.slowmo = (gp.buttons[6]?.value ?? 0) > 0.25;
+}
+
+let prevLB=false, prevRB=false;
+
+window.addEventListener('gamepadconnected',    () => {});
+window.addEventListener('gamepaddisconnected', () => {});
+
+// ─── TOUCH CONTROLS ──────────────────────────────────────────────────────────
+
+function holdBtn(el, inputKey) {
+  el.addEventListener('pointerdown', e => { e.preventDefault(); input[inputKey]=true; el.classList.add('held'); });
+  el.addEventListener('pointerup',   e => { e.preventDefault(); input[inputKey]=false; el.classList.remove('held'); });
+  el.addEventListener('pointerout',  e => { input[inputKey]=false; el.classList.remove('held'); });
+  el.addEventListener('pointercancel', e => { input[inputKey]=false; el.classList.remove('held'); });
+}
+
+holdBtn(document.getElementById('padUp'),    'up');
+holdBtn(document.getElementById('padDown'),  'down');
+holdBtn(document.getElementById('padLeft'),  'left');
+holdBtn(document.getElementById('padRight'), 'right');
+holdBtn(document.getElementById('faceA'),    'beep');
+holdBtn(document.getElementById('faceB'),    'stop');
+holdBtn(document.getElementById('faceX'),    'paint');
+holdBtn(document.getElementById('faceY'),    'celebrate');
+holdBtn(document.getElementById('bumpL'),    'beep');
+holdBtn(document.getElementById('bumpR'),    'zoom');
+
+// ─── PLACE / COLOR CYCLE ─────────────────────────────────────────────────────
+
+function cycleColor() {
+  carColorIdx = (carColorIdx + 1) % CAR_COLORS.length;
+  showMsg(`🎨 ${CAR_COLORS[carColorIdx].label} car!`);
+  burst(car.x, car.y, CAR_COLORS[carColorIdx].hex, 14);
+}
+
+function cyclePlace() {
+  placeIdx = (placeIdx + 1) % PLACES.length;
+  spawnFloaters();
+  placeSound();
+  showMsg(pick(MESSAGES.place) + ' ' + PLACES[placeIdx].emoji);
+}
+
+document.getElementById('colorBtn').addEventListener('click', () => { if(running) cycleColor(); });
+document.getElementById('placeBtn').addEventListener('click', () => { if(running) cyclePlace(); });
+
+// ─── PAUSE / RESUME ──────────────────────────────────────────────────────────
+
+function togglePause() {
+  paused = !paused;
+  document.getElementById('pauseModal').style.display = paused ? 'grid' : 'none';
+  document.getElementById('pauseBtn').textContent = paused ? '▶️' : '⏸️';
+  if (!paused) { lastTime = performance.now(); }
+}
+
+document.getElementById('pauseBtn').addEventListener('click', () => { if(running) togglePause(); });
+document.getElementById('resumeBtn').addEventListener('click', togglePause);
+
+// ─── RESTART ─────────────────────────────────────────────────────────────────
+
+function restartGame() {
+  paused = false;
+  document.getElementById('pauseModal').style.display = 'none';
+  document.getElementById('welcomeModal').style.display = 'grid';
+  running = false;
+  buildGrid(colorGrid, CAR_COLORS, ()=>carColorIdx, i=>{ carColorIdx=i; });
+  buildGrid(placeGrid, PLACES,     ()=>placeIdx,    i=>{ placeIdx=i; });
+}
+
+// ─── HELP ────────────────────────────────────────────────────────────────────
+
+const infoPanel = document.getElementById('infoPanel');
+document.getElementById('helpBtn').addEventListener('click', () => {
+  infoPanel.classList.toggle('show');
+});
+document.addEventListener('pointerdown', e => {
+  if (!infoPanel.contains(e.target) && e.target !== document.getElementById('helpBtn')) {
+    infoPanel.classList.remove('show');
+  }
+});
+
+</script>
+</body>
+</html>
